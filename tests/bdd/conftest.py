@@ -19,6 +19,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
+xpaths = __import__('ha-bhyve02.xpaths').xpaths
 
 # random hostname
 hostname = f'uitest{"".join(random.choices(string.digits, k=3))}'
@@ -169,6 +170,8 @@ def pytest_runtest_makereport(item):
             disable_active_directory()
         elif 'T1013' in screenshot_name:
             disable_ldap()
+        elif 'T1117' in screenshot_name:
+            disable_nis()
 
 
 def save_screenshot(name):
@@ -288,3 +291,19 @@ def disable_ldap():
     web_driver.find_element_by_xpath('//button[@ix-auto="button__SAVE"]').click()
     if wait_on_element_disappear(60, '//h6[contains(.,"Please wait")]') is False:
         web_driver.refresh()
+
+
+def disable_nis():
+    """click on Directory Services and select NIS, then disable NIS."""
+    assert wait_on_element(web_driver, 5, xpaths.sideMenu.directory_services, 'clickable')
+    web_driver.find_element_by_xpath(xpaths.sideMenu.directory_services).click()
+    assert wait_on_element(web_driver, 7, xpaths.sideMenu.directory_services_nis)
+    web_driver.find_element_by_xpath(xpaths.sideMenu.directory_services_nis).click()
+    assert wait_on_element(web_driver, 5, '//li[span/a/text()="NIS"]')
+    assert wait_on_element(web_driver, 5, '//h4[contains(.,"Network Information Service (NIS)")]')
+    assert wait_on_element(web_driver, 5, xpaths.checkbox.enable, 'clickable')
+    web_driver.find_element_by_xpath(xpaths.checkbox.enable).click()
+    assert wait_on_element(web_driver, 5, xpaths.button.save, 'clickable')
+    web_driver.find_element_by_xpath(xpaths.button.save).click()
+    assert wait_on_element_disappear(web_driver, 30, xpaths.popupTitle.please_wait)
+    assert wait_on_element(web_driver, 7, '//div[contains(.,"Settings saved.")]')
