@@ -1,6 +1,7 @@
 # coding=utf-8
 """High Availability (tn-bhyve03) feature tests."""
 
+import pytest
 import time
 import xpaths
 from function import (
@@ -19,9 +20,10 @@ from pytest_bdd import (
 )
 
 
-@scenario('features/NAS-T940.feature', 'Setting up LDAP and verify that LDAP still work after failover')
-def test_setting_up_ldap_and_verify_that_ldap_still_work_after_failover():
-    """Setting up LDAP and verify that LDAP still work after failover."""
+@pytest.mark.dependency(name='NAS-T940')
+@scenario('features/NAS-T940.feature', 'Setting up LDAP')
+def test_setting_up_ldap(driver):
+    """Setting up LDAP."""
 
 
 @given(parsers.parse('the browser is open on "{virtal_hostname}" and logged in'))
@@ -119,64 +121,3 @@ def run_getent_cmd_and_verify_it_return_ldap_user_info(getent_cmd, ldap_user, vi
     assert ldap_user in ssh_result['output'], ssh_result['output']
 
 
-@then('go to the Dashboard, verify HA is enabled, then Trigger failover')
-def go_to_the_dashboard_verify_ha_is_enabled_then_trigger_failover(driver):
-    """Go to the Dashboard, verify HA is enabled, then Trigger failover."""
-    assert wait_on_element(driver, 10, xpaths.sideMenu.root)
-    element = driver.find_element_by_xpath(xpaths.sideMenu.root)
-    driver.execute_script("arguments[0].scrollIntoView();", element)
-    assert wait_on_element(driver, 5, xpaths.sideMenu.dashboard, 'clickable')
-    driver.find_element_by_xpath(xpaths.sideMenu.dashboard).click()
-    assert wait_on_element(driver, 7, xpaths.breadcrumb.dashboard)
-    # refresh_if_element_missing need to be replace with wait_on_element when NAS-118299
-    assert refresh_if_element_missing(driver, 10, xpaths.topToolbar.ha_enable)
-    time.sleep(30)
-    assert wait_on_element(driver, 60, xpaths.button.initiate_failover, 'clickable')
-    driver.find_element_by_xpath(xpaths.button.initiate_failover).click()
-    assert wait_on_element(driver, 5, xpaths.popupTitle.initiate_failover)
-    driver.find_element_by_xpath(xpaths.checkbox.confirm).click()
-    assert wait_on_element(driver, 5, xpaths.button.failover)
-    driver.find_element_by_xpath(xpaths.button.failover).click()
-
-
-@then('on the login, wait to see HA is enabled before login')
-def on_the_login_wait_to_see_ha_is_enabled_before_login(driver):
-    """on the login, wait to see HA is enabled before login."""
-    assert wait_on_element(driver, 120, xpaths.login.user_input)
-    # wait for HA is enabled to avoid UI refreshing
-    assert wait_on_element(driver, 300, xpaths.login.ha_status('HA is enabled'))
-    assert wait_on_element(driver, 7, xpaths.login.user_input)
-    driver.find_element_by_xpath(xpaths.login.user_input).clear()
-    driver.find_element_by_xpath(xpaths.login.user_input).send_keys('root')
-    driver.find_element_by_xpath(xpaths.login.password_input).clear()
-    driver.find_element_by_xpath(xpaths.login.password_input).send_keys('testing')
-    assert wait_on_element(driver, 4, xpaths.login.signin_button, 'clickable')
-    driver.find_element_by_xpath(xpaths.login.signin_button).click()
-
-
-@then('on the Dashboard, make sure HA is enabled')
-def on_the_dashboard_make_sure_ha_is_enabled(driver):
-    """on the Dashboard, make sure HA is enabled."""
-    assert wait_on_element(driver, 7, xpaths.breadcrumb.dashboard)
-    assert wait_on_element(driver, 60, xpaths.dashboard.system_information)
-    if wait_on_element(driver, 5, xpaths.popupTitle.help):
-        assert wait_on_element(driver, 10, xpaths.button.close, 'clickable')
-        driver.find_element_by_xpath(xpaths.button.close).click()
-    # refresh_if_element_missing need to be replace with wait_on_element when NAS-118299
-    assert refresh_if_element_missing(driver, 30, xpaths.topToolbar.ha_enable)
-
-
-@then('ssh to the virtual node again to verify the pdbedit command still works')
-def ssh_to_the_virtual_node_again_to_verify_the_pdbedit_command_still_works(pdbedit_cmd, ldap_user, virtal_hostname):
-    """ssh to the virtual node again to verify the pdbedit command still works."""
-    ssh_result = ssh_cmd(pdbedit_cmd, 'root', 'testing', virtal_hostname)
-    assert ssh_result['result'] is True, str(ssh_result)
-    assert ldap_user in ssh_result['output'], str(ssh_result)
-
-
-@then('rerun the getent command to verify it return LDAP user info')
-def rerun_the_getent_command_to_verify_it_return_ldap_user_info(getent_cmd, ldap_user, virtal_hostname):
-    """rerun the getent command to verify it return LDAP user info."""
-    ssh_result = ssh_cmd(getent_cmd, 'root', 'testing', virtal_hostname)
-    assert ssh_result['result'], str(ssh_result)
-    assert ldap_user in ssh_result['output'], str(ssh_result)
